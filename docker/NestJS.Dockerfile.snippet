@@ -1,0 +1,12 @@
+# In das vorhandene Debian-basierte NestJS-Dockerfile integrieren.
+# Bei Alpine lautet das Paket anders; die Debian-Variante ist fuer Samba einfacher.
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends python3 samba-common-bin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY geekom-power-controller/powerctl.py /opt/geekom-power-controller/powerctl.py
+
+# config.json und samba-auth.conf nicht ins Image kopieren.
+# Beide im Deployment read-only als Secret/Config mounten.

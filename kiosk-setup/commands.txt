@@ -1,0 +1,11 @@
+D:
+powershell -ExecutionPolicy Bypass -File .\05-create-kiosk-power-user.ps1 -PlaintextPassword "DEIN-PASSWORT"
+powershell -ExecutionPolicy Bypass -File .\06-grant-remote-shutdown.ps1
+
+
+Aus Kiosk:
+Strg + Alt + Entf 
+bzw:
+Strg + Alt + Umschalt + K
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\08-configure-edge-kiosk.ps1 -Url "https://DEINE-WEBSITE.DE/"

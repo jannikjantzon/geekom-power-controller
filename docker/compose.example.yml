@@ -1,0 +1,18 @@
+services:
+  powerctl:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    network_mode: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ../config.proxmox-docker.example.json:/config/config.json:ro
+      - ../secrets/samba-auth.conf:/run/secrets/samba-auth.conf:ro
+    command:
+      - --config
+      - /config/config.json
+      - validate

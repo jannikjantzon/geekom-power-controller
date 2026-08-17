@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "defaults": {
+    "broadcast": "192.168.2.255",
+    "wolPort": 9,
+    "wolPackets": 3,
+    "wolPacketIntervalMs": 250,
+    "wakeTimeoutSeconds": 120,
+    "shutdownTimeoutSeconds": 90,
+    "pollIntervalSeconds": 2,
+    "requiredConsecutiveChecks": 2,
+    "maxConcurrency": 8,
+    "healthCheck": {
+      "port": 445,
+      "connectTimeoutSeconds": 2
+    },
+    "shutdown": {
+      "transport": "windows-native",
+      "executable": "C:\\Windows\\System32\\shutdown.exe",
+      "commandTimeoutSeconds": 30
+    }
+  },
+  "devices": [
+    {
+      "id": "kiosk-01",
+      "mac": "AA:BB:CC:DD:EE:01",
+      "host": "192.168.2.21"
+    },
+    {
+      "id": "kiosk-02",
+      "mac": "AA:BB:CC:DD:EE:02",
+      "host": "192.168.2.22"
+    },
+    {
+      "id": "kiosk-reserve",
+      "mac": "AA:BB:CC:DD:EE:03",
+      "host": "192.168.2.23",
+      "enabled": false
+    }
+  ]
+}
