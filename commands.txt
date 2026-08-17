@@ -1,3 +1,7 @@
 py -3 .\powerctl.py --config .\config.json --pretty validate
+py -3 .\powerctl.py --config .\config.json --pretty Status
 
-py -3 .\powerctl.py --config .\config.json --pretty status
+On Windows Server Host:
+
+net use \\192.168.X.X\IPC$ /delete /y
+net use \\192.168.X.X\IPC$ /user:<KIOSK-HOSTNAME>\kiosk-power *
