@@ -77,6 +77,61 @@ class PowerControllerTest(unittest.TestCase):
                 powerctl.build_shutdown_command(loaded.devices[0]),
             )
 
+    def test_windows_native_credentials_build_ipc_command(self):
+        config = {
+            "version": 1,
+            "defaults": {
+                "broadcast": "192.168.1.255",
+                "healthCheck": {"port": 445},
+                "shutdown": {"transport": "windows-native", "executable": "shutdown.exe"}
+            },
+            "devices": [
+                {
+                    "id": "one",
+                    "mac": "00:11:22:33:44:55",
+                    "host": "192.168.1.10",
+                    "shutdown": {
+                        "username": "KIOSK-01\\kiosk-power",
+                        "password": "test-password"
+                    }
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            path.write_text(json.dumps(config), encoding="utf-8")
+            device = powerctl.load_config(path).devices[0]
+            self.assertEqual(
+                [
+                    "net.exe", "use", "\\\\192.168.1.10\\IPC$", "test-password",
+                    "/user:KIOSK-01\\kiosk-power", "/persistent:no",
+                ],
+                powerctl.build_windows_ipc_command(device),
+            )
+
+    def test_windows_native_rejects_incomplete_credentials(self):
+        config = {
+            "version": 1,
+            "defaults": {
+                "broadcast": "192.168.1.255",
+                "healthCheck": {"port": 445},
+                "shutdown": {"transport": "windows-native", "executable": "shutdown.exe"}
+            },
+            "devices": [
+                {
+                    "id": "one",
+                    "mac": "00:11:22:33:44:55",
+                    "host": "192.168.1.10",
+                    "shutdown": {"username": "KIOSK-01\\kiosk-power"}
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "config.json"
+            path.write_text(json.dumps(config), encoding="utf-8")
+            with self.assertRaises(powerctl.ConfigError):
+                powerctl.load_config(path)
+
     def test_duplicate_mac_rejected(self):
         config = {
             "version": 1,

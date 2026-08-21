@@ -1,0 +1,9 @@
+connections:
+  - ip: '192.168.100.53'
+    hostname: 'DESKTOP-HLBTQPU'
+    password: 'KIOSK-POWER-PASSWORT_EINTRAGEN'
+
+# Weitere Kiosks nach demselben Muster:
+#  - ip: '192.168.100.54'
+#    hostname: 'KIOSK-02'
+#    password: 'WEITERES_KIOSK-POWER_PASSWORT'

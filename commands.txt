@@ -1,7 +1,10 @@
-py -3 .\powerctl.py --config .\config.json --pretty validate
-py -3 .\powerctl.py --config .\config.json --pretty Status
+py -3 .\powerctl.py --config .\api\config.json --pretty validate
+py -3 .\powerctl.py --config .\api\config.json --pretty status
+py -3 .\powerctl.py --config .\api\config.json --pretty wake screen3
+py -3 .\powerctl.py --config .\api\config.json --pretty shutdown screen3
 
-On Windows Server Host:
+API einmalig oder nach Aenderungen als Administrator registrieren/neu laden:
+powershell.exe -ExecutionPolicy Bypass -File .\api\startup.ps1
 
-net use \\192.168.X.X\IPC$ /delete /y
-net use \\192.168.X.X\IPC$ /user:<KIOSK-HOSTNAME>\kiosk-power *
+IPC-Verbindungen einmalig oder nach Aenderungen als Administrator registrieren/neu laden:
+powershell.exe -ExecutionPolicy Bypass -File .\net\startup.ps1
