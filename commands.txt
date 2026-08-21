@@ -3,6 +3,16 @@ py -3 .\powerctl.py --config .\api\config.json --pretty status
 py -3 .\powerctl.py --config .\api\config.json --pretty wake screen3
 py -3 .\powerctl.py --config .\api\config.json --pretty shutdown screen3
 
+HTTP API (Bearer-Header erforderlich):
+POST http://<controller-ip>:8787/api/v1/status?id=screen3
+POST http://<controller-ip>:8787/api/v1/startup?id=screen3
+POST http://<controller-ip>:8787/api/v1/shutdown?id=screen3
+POST http://<controller-ip>:8787/api/v1/startup-all
+POST http://<controller-ip>:8787/api/v1/shutdown-all
+
+startup-all und shutdown-all akzeptieren keine Query-Parameter und verarbeiten
+alle in config.json mit enabled=true konfigurierten Geraete parallel.
+
 API einmalig oder nach Aenderungen als Administrator registrieren/neu laden:
 powershell.exe -ExecutionPolicy Bypass -File .\api\startup.ps1
 

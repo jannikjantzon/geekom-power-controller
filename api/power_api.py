@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Small authenticated HTTP wrapper for powerctl.py.
 
-The HTTP request can select only a configured device ID. Routes, actions,
-executable paths and all other process arguments are fixed by this file or the
-local configuration. subprocess is always invoked with shell=False.
+The HTTP request can select one configured device ID or use an explicit all
+route. Routes, actions, executable paths and all other process arguments are
+fixed by this file or the local configuration. subprocess is always invoked
+with shell=False.
 """
 
 from __future__ import annotations
@@ -223,7 +224,7 @@ def run_controller(settings: ApiSettings, action: str, device_id: str | None) ->
         raise ControllerExecutionError("Interne ungueltige Controller-Aktion")
     if action == "validate" and device_id is not None:
         raise ControllerExecutionError("validate akzeptiert keine Device-ID")
-    if action != "validate" and device_id not in settings.enabled_device_ids:
+    if action != "validate" and device_id is not None and device_id not in settings.enabled_device_ids:
         raise ControllerExecutionError("Interne ungueltige Device-ID")
 
     command = [
@@ -327,37 +328,51 @@ def create_app(config_path: Path, controller_runner: ControllerRunner = run_cont
     def health() -> Response:
         return jsonify({"ok": True, "service": "geekom-power-api", "apiVersion": API_VERSION})
 
-    def execute(requested_action: str) -> tuple[Response, int]:
-        if set(request.args.keys()) != {"id"} or len(request.args.getlist("id")) != 1:
-            return _json_error("invalid_request", "Genau ein Query-Parameter 'id' ist erforderlich", 400)
-        device_id = request.args.get("id", "")
-        if device_id not in settings.enabled_device_ids:
-            return _json_error("unknown_device", "Unbekannte oder deaktivierte Device-ID", 404)
+    def execute_controller(
+        requested_action: str,
+        device_ids: tuple[str, ...],
+        controller_device_id: str | None,
+    ) -> tuple[Response, int]:
+        acquired_locks: list[threading.Lock] = []
+        for device_id in device_ids:
+            lock = locks[device_id]
+            if not lock.acquire(blocking=False):
+                for acquired_lock in reversed(acquired_locks):
+                    acquired_lock.release()
+                return _json_error(
+                    "device_busy",
+                    "Fuer mindestens eines der angeforderten Geraete laeuft bereits eine Aktion",
+                    409,
+                )
+            acquired_locks.append(lock)
 
         controller_action = "wake" if requested_action == "startup" else requested_action
-        lock = locks[device_id]
-        if not lock.acquire(blocking=False):
-            return _json_error("device_busy", "Fuer dieses Device laeuft bereits eine Aktion", 409)
+        device_label = controller_device_id if controller_device_id is not None else "all"
 
         try:
-            payload, exit_code = controller_runner(settings, controller_action, device_id)
+            payload, exit_code = controller_runner(
+                settings,
+                controller_action,
+                controller_device_id,
+            )
         except ControllerExecutionError as error:
             logger.error(
                 "controller_error remote=%s device=%s action=%s error=%s",
                 request.remote_addr,
-                device_id,
+                device_label,
                 requested_action,
                 error,
             )
             status = 504 if "Zeitlimit" in str(error) else 500
             return _json_error("controller_error", str(error), status)
         finally:
-            lock.release()
+            for acquired_lock in reversed(acquired_locks):
+                acquired_lock.release()
 
         logger.info(
             "action remote=%s device=%s action=%s exitCode=%s ok=%s",
             request.remote_addr,
-            device_id,
+            device_label,
             requested_action,
             exit_code,
             payload.get("ok"),
@@ -375,6 +390,28 @@ def create_app(config_path: Path, controller_runner: ControllerRunner = run_cont
             status = 500
         return jsonify(payload), status
 
+    def execute(requested_action: str) -> tuple[Response, int]:
+        if set(request.args.keys()) != {"id"} or len(request.args.getlist("id")) != 1:
+            return _json_error("invalid_request", "Genau ein Query-Parameter 'id' ist erforderlich", 400)
+        device_id = request.args.get("id", "")
+        if device_id not in settings.enabled_device_ids:
+            return _json_error("unknown_device", "Unbekannte oder deaktivierte Device-ID", 404)
+
+        return execute_controller(requested_action, (device_id,), device_id)
+
+    def execute_all(requested_action: str) -> tuple[Response, int]:
+        if request.args:
+            return _json_error(
+                "invalid_request",
+                f"{requested_action}-all akzeptiert keine Query-Parameter",
+                400,
+            )
+        return execute_controller(
+            requested_action,
+            tuple(sorted(settings.enabled_device_ids)),
+            None,
+        )
+
     @app.post("/api/v1/status")
     def status() -> tuple[Response, int]:
         return execute("status")
@@ -386,6 +423,14 @@ def create_app(config_path: Path, controller_runner: ControllerRunner = run_cont
     @app.post("/api/v1/shutdown")
     def shutdown() -> tuple[Response, int]:
         return execute("shutdown")
+
+    @app.post("/api/v1/startup-all")
+    def startup_all() -> tuple[Response, int]:
+        return execute_all("startup")
+
+    @app.post("/api/v1/shutdown-all")
+    def shutdown_all() -> tuple[Response, int]:
+        return execute_all("shutdown")
 
     @app.errorhandler(404)
     def not_found(_: Exception) -> tuple[Response, int]:
